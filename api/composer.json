@@ -1,0 +1,13 @@
+{
+    "name": "majortelvin/api",
+    "authors": [
+        {
+            "name": "Major",
+            "email": "telvinmaior@gmail.com"
+        }
+    ],
+    "require": {
+        "firebase/php-jwt": "^7.1",
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
