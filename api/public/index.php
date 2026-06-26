@@ -4,7 +4,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load our app config (reads .env, defines constants)
-require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../src/config/config.php';
 
 // CORS Headers — must be sent before any output
 header('Access-Control-Allow-Origin: http://localhost:5173'); // React dev server)

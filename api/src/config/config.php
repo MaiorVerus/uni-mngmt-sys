@@ -1,7 +1,7 @@
 <?php
 
 // Load the .env file into $_ENV
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../../');
 $dotenv->load();
 
 // Required variables — app crashes if any are missing

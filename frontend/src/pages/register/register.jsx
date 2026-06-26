@@ -1,89 +1,63 @@
-import { useState } from "react"
+// register.jsx
+import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // ← added
+import css from "./register.module.css";
+import axios from "axios";
+import { useAuth } from "../../context/AuthContext"; // ← path fixed
 
-
-
-
-
-import css from "./register.module.css"
-
-
-export default function Register(params) {
+export default function Register() {
+    const { login } = useAuth();
+    const navigate = useNavigate(); // ← added
     const [action, setAction] = useState("login");
+    const [err, setErr] = useState(null);
     const [formData, setFormData] = useState({
         username: '',
         email: '',
         password: ''
     });
+
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prevData) => ({
-            ...prevData,
-            [name]: value // Dynamic key assignment
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    async function handleSubmit(params) {
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setErr(null);
 
+        const url = action === "login"
+            ? "http://localhost/uni-mngmt-sys/api/public/auth/login"
+            : "http://localhost/uni-mngmt-sys/api/public/auth/signup";
+
+        try {
+            const response = await axios.post(url, formData);
+
+            if (action === "login") {
+                const { token, user } = response.data;
+                login(token, user); // ← stores token + user in context & localStorage
+
+                // Role-based redirect
+                const routes = {
+                    student: '/student/dashboard',
+                    lecturer: '/lecturer/dashboard',
+                    hod: '/hod/dashboard',
+                    admin: '/admin/dashboard',
+                };
+
+                navigate(routes[user.role] ?? '/dashboard');
+                // ↑ if role is unrecognised, go to a safe generic dashboard
+
+            } else {
+                setAction("login");
+                alert("Signup successful! Please log in.");
+            }
+
+        } catch (error) {
+            const message = error.response?.data?.error
+                ?? error.message
+                ?? "Something went wrong. Please try again.";
+            setErr(message);
+        }
     }
 
-    return (<>
-        <p>signup or register</p>
-        <div className={css['form-container']}>
-            <form onSubmit={handleSubmit}>
-                {action === "login" ? null : (
-                    <div className={css['input-label txt']}>
-                        <label htmlFor="">Username</label> <br />
-                        <input
-                            name="username"
-                            placeholder="e.g Jean Paul"
-                            type="text"
-                            onChange={handleChange}
-                            value={formData.username}
-                            required
-                        /> <br />
-                    </div>
-                )}
-
-                <div className={css['input-label txt']}>
-                    <label htmlFor="">Email:
-                        <span className={css['sp-n']}>*Use school email*</span>
-                    </label> <br />
-                    <input
-                        name="email"
-                        placeholder="e.g tmajor@xool.com"
-                        type="email"
-                        onChange={handleChange}
-                        value={formData.email}
-                        required
-                    /> <br />
-                </div>
-                <div className={css['input-label txt']}>
-                    <label htmlFor="">Password</label> <br />
-                    <input
-                        name="password"
-                        placeholder="e.g tM@ior=yte"
-                        type="password"
-                        onChange={handleChange}
-                        value={formData.password}
-                        required
-                    /> <br />
-                </div>
-                <input type="submit" value="Submit" />
-
-            </form>
-            <div className={css["action-btns"]}>
-                <button
-                    type="button"
-                    className={css[action === "login" ? "active" : null]}
-                    onClick={() => setAction("login")}
-                >Login</button>
-                <button
-                    type="button"
-                    className={css[action === "signup" ? "active" : null]}
-                    onClick={() => setAction("signup")}
-                >Sign Up</button>
-            </div>
-        </div>
-
-    </>)
 }

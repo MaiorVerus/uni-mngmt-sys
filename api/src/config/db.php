@@ -1,11 +1,11 @@
-
 <?php
+
+require_once __DIR__ . '/config.php'; // ← config.php does all the .env work
 
 class Database
 {
     private static ?PDO $instance = null;
 
-    // Private constructor — nobody can call `new Database()`
     private function __construct() {}
 
     public static function getInstance(): PDO
