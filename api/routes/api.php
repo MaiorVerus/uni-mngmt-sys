@@ -39,7 +39,6 @@ match (true) {
 
     // 🔒 Protected Routes ─────────────────────────────────────────────────
 
-    // Any authenticated user — role doesn't matter, valid token does
     $method === 'GET' && $path === '/dashboard/profile'
     => (function () {
         $user = AuthMiddleware::authenticate();

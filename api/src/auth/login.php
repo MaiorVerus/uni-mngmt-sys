@@ -1,15 +1,20 @@
 <?php
 // ── Imports ──────────────────────────────────────────────────────────────────
-use Firebase\JWT\JWT;                    // LINE 2: tells PHP where JWT class lives
-// without this → fatal "Class not found"
+use Firebase\JWT\JWT;
 
-require __DIR__ . "/../config/db.php";   // loads Database class + .env constants
+require __DIR__ . "/../config/db.php";
 $pdo = Database::getInstance();
 
-// ── Headers ──────────────────────────────────────────────────────────────────
-header("Content-Type: application/json");
+header('Access-Control-Allow-Origin: http://localhost:5173');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Content-Type: application/json');
 
-// ── Parse Request Body ───────────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 $json = json_decode(file_get_contents("php://input"), true);
 if (!is_array($json)) {
     http_response_code(400);
@@ -17,9 +22,8 @@ if (!is_array($json)) {
     exit;
 }
 
-// ── Extract & Sanitise ───────────────────────────────────────────────────────
-$email    = trim($json['email']    ?? '');
-$password =      $json['password'] ?? '';
+$email    = trim($json['email'] ?? '');
+$password = $json['password'] ?? '';
 
 if ($email === '' || $password === '') {
     http_response_code(422);
@@ -27,24 +31,16 @@ if ($email === '' || $password === '') {
     exit;
 }
 
-// ── Fetch User ───────────────────────────────────────────────────────────────
-$stmt = $pdo->prepare('SELECT id, username, email, password, role 
-                        FROM users 
-                        WHERE email = ?');
-// ↑ RECOMMENDATION: select only needed columns, not SELECT *
-// Avoids accidentally exposing columns you add later (e.g. reset_token)
-
+$stmt = $pdo->prepare('SELECT id, username, email, password, role FROM users WHERE email = ?');
 $stmt->execute([$email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// ── Verify Credentials ───────────────────────────────────────────────────────
 if (!$user || !password_verify($password, $user['password'])) {
     http_response_code(401);
     echo json_encode(['error' => 'Invalid email or password.']);
     exit;
 }
 
-// ── Load JWT Secret ──────────────────────────────────────────────────────────
 $secretKey = $_ENV['JWT_SECRET'] ?? null;
 
 if (!$secretKey) {
@@ -53,40 +49,30 @@ if (!$secretKey) {
     exit;
 }
 
-// ── Build JWT Payload ────────────────────────────────────────────────────────
 $issuedAt = time();
 $expire   = $issuedAt + 3600;
 
 $payload = [
-    'iss'   => 'uni-mngmt-sys',   // issuer:    who created this token
-    'aud'   => 'uni-mngmt-sys',   // audience:  who should ACCEPT this token
-    // ↑ iss and aud should match — your middleware
-    //   will validate aud; 'browser' is non-standard
-    'iat'   => $issuedAt,         // issued at: when was it created
-    'exp'   => $expire,           // expiry:    when does it die (Unix timestamp)
-    'sub'   => $user['id'],       // subject:   standard claim for "who is this for"
-    // ↑ use 'sub' not 'id' — it's the JWT standard
-    'role'  => $user['role'],     // custom:    your RBAC needs this
-    'email' => $user['email'],    // custom:    useful for frontend display
+    'iss'   => 'uni-mngmt-sys',
+    'aud'   => 'uni-mngmt-sys',
+    'iat'   => $issuedAt,
+    'exp'   => $expire,
+    'sub'   => $user['id'],
+    'role'  => $user['role'] ?? 'student',
+    'email' => $user['email'],
 ];
-// 🚨 NEVER put password, reset_token, or any secret in payload
 
-// ── Sign Token ───────────────────────────────────────────────────────────────
 $jwt = JWT::encode($payload, $secretKey, 'HS256');
-// ↑ HS256 = HMAC-SHA256, symmetric — same key signs and verifies
 
-// ── Send Response ────────────────────────────────────────────────────────────
-// ✅ ONE echo, AFTER all logic is complete
 http_response_code(200);
 echo json_encode([
     'message'    => 'Login successful.',
     'token'      => $jwt,
-    'expires_in' => 3600,          // tells the frontend when to refresh (seconds)
-    'user'       => [              
+    'expires_in' => 3600,
+    'user'       => [
         'id'       => $user['id'],
         'username' => $user['username'],
-        'role'     => $user['role'],
+        'role'     => $user['role'] ?? 'student',
     ],
-  
 ]);
 ?>

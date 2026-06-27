@@ -6,11 +6,18 @@ import axios from "axios";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(localStorage.getItem("token") || null);
+    const [token, setToken] = useState(() => localStorage.getItem("token") || null);
     const [user, setUser] = useState(() => {
         const saved = localStorage.getItem("user");
-        return saved ? JSON.parse(saved) : null;
-        // ↑ lazy initialiser — only runs once on mount, not every render
+
+        if (!saved) return null;
+
+        try {
+            return JSON.parse(saved);
+        } catch {
+            localStorage.removeItem("user");
+            return null;
+        }
     });
 
     const navigate = useNavigate();
